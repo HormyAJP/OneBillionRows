@@ -8,6 +8,7 @@
 #include "hash_map.h"
 #include "shared_definitions.h"
 
+#include <sys/param.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,30 +18,25 @@
 
 // Anecdotally djb2 hash seems faster than the crap I randomly came up with (no surprise)
 // Need to debug the hashmap and see how many collisions we're getting.
-size_t hash(const char *weather_station_name)
+size_t hash(const char *weather_station_name, size_t str_len)
 {
     unsigned long hash = 5381;
-    int c;
-
-    while ((c = *weather_station_name++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    // TODO: Expriment to see if we can just hash off the first 3 letters
+    // Might need to refine this via debugging the hash map
+    const char* pend = weather_station_name + MIN(str_len, 3);
+    while (weather_station_name < pend) {
+        hash = ((hash << 5) + hash) + *weather_station_name++; /* hash * 33 + c */
+    }
 
     return hash % HASH_SIZE;
 }
 
-//size_t hash(const char* weather_station_name) {
-//    return weather_station_name[0] * weather_station_name[1] * weather_station_name[2] % HASH_SIZE;
-//}
-
 hash_map* hash_create(void) {
     hash_map* h = (hash_map*)malloc(sizeof(hash_map));
+    memset(h, 0, sizeof(hash_map)); // This is necessary to ensure the string ptr is zero and count, total are zero.
     for (size_t i = 0; i < HASH_SIZE; ++i) {
-        (h->buckets + i)->weather_station_name[0] = 0;
         (h->buckets + i)->min = 999;
         (h->buckets + i)->max = -999;
-        // Probably an irrelevant optimization. No need to initialize these though.
-//        (h->buckets + i)->count = 0;
-//        (h->buckets + i)->total = 0;
     }
     return h;
 }
@@ -50,11 +46,11 @@ void hash_destroy(hash_map* h) {
 }
 
 // TODO: Debug collisions and collision depths
-hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name) {
-    size_t bucket = hash(weather_station_name);
+hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name, size_t str_len) {
+    size_t bucket = hash(weather_station_name, str_len);
     hash_data* data = &(h->buckets[bucket]);
     while (1) {
-        if (likely(!strcmp(data->weather_station_name, weather_station_name))) {
+        if (likely(!strncmp(data->weather_station_name, weather_station_name, str_len))) {
             return data;
         }
 

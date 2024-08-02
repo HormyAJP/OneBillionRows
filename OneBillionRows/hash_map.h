@@ -25,13 +25,13 @@ typedef struct hash_map {
     hash_data buckets[HASH_SIZE];
 } hash_map;
 
-size_t hash(const char* weather_station_name);
+size_t hash(const char *weather_station_name, size_t str_len);
 
 hash_map* hash_create(void);
 void hash_destroy(hash_map* h);
 
 // TODO: Debug collisions and collision depths
-hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name);
+hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name, size_t str_len);
 
 void hash_dump(hash_map* h);
 

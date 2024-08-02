@@ -34,12 +34,15 @@
 // cd ~/dev/git/1brc
 // time bin/analyze /Users/badger/dev/git/python-1-billion-row-challenge/data/measurements_medium.txt > /dev/null
 //
-// Full: 27.907s
-// Medium: 2.6s
+// TODO: WTF. They aren't getting any sys or user times :think:
+// Full: 0.00s user 0.00s system 0% cpu 26.914 total
+// Medium: 0.00s user 0.00s system 1% cpu 0.667 total
 
-// I need to be about 3 times faster just on the read and parse alone
+// I need to be just over twice as fast! That's actually not horrific.
 // My tmes:
-// Full: 105s
+// Note that I'm not leverging multiple cores that well it seems
+// Full: 48.57s user 25.66s system 126% cpu 58.778 total
+// Medium: 5.77s user 0.41s system 381% cpu 1.620 total
 
 #include "logic.h"
 

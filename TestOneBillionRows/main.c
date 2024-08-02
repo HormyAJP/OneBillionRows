@@ -18,7 +18,7 @@ const char* test_data1 = "Kingston;31.4\nEdinburgh;10.9";
         parse_mapped_file_to_hash_map(INPUT_STRING, strlen(INPUT_STRING), h);
 
 #define TEST_CASE_ASSERT(NAME, COUNT, MAX, MIN, AVERAGE) \
-    d = hash_get_bucket(h, NAME); \
+    d = hash_get_bucket(h, NAME, strlen(NAME)); \
     assert(d->count == COUNT); \
     assert(d->max == MAX); \
     assert(d->min == MIN); \

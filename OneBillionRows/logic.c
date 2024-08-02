@@ -90,20 +90,36 @@ static inline int fast_atoi( const char * str )
     return isminus ? -val : val;
 }
 
-int parse_number(const char* start) {
+static inline int parse_number_and_move_pointer(const char** pstart) {
     static char NUM_BUFFER[5];
     int i = 0;
-    while (*start != '.') {
-        NUM_BUFFER[i++] = *start;
-        ++start;
+    while (**pstart != '.') {
+        NUM_BUFFER[i++] = **pstart;
+        ++*pstart;
     }
-    NUM_BUFFER[i++] = *(start+1);
+    // Move pointer past the dot
+    (*pstart)++;
+    NUM_BUFFER[i++] = **pstart;
     NUM_BUFFER[i] = 0;
+    // Move pointer past the final digit AND the newline
+    *pstart+=2;
     return fast_atoi(NUM_BUFFER);
 }
 
-int index_of_newline(const char* p) {
-    // TODO: Make const??
+static inline int index_of_semicolon(const char* p) {
+    // TODO: Make static const. Don't think you can as you're filling a register.
+    __m128i new_lines = _mm_set_epi64x(0x3B3B3B3B3B3B3B3B, 0x3B3B3B3B3B3B3B3B);
+    __m128i bytes_to_check = _mm_set_epi64x(*((long long*)p + 1), *(long long*)p);
+    __m128i comparison_result = _mm_cmpeq_epi8(bytes_to_check, new_lines);
+    int mask = _mm_movemask_epi8(comparison_result);
+    if (unlikely(!mask)) {
+        return -1;
+    }
+    return __builtin_ctz(mask);
+}
+
+static inline int index_of_newline(const char* p) {
+    // TODO: Make static const. Don't think you can as you're filling a register.
     __m128i new_lines = _mm_set_epi64x(0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A);
     __m128i bytes_to_check = _mm_set_epi64x(*((long long*)p + 1), *(long long*)p);
     __m128i comparison_result = _mm_cmpeq_epi8(bytes_to_check, new_lines);
@@ -114,12 +130,8 @@ int index_of_newline(const char* p) {
     return __builtin_ctz(mask);
 }
 
-//inline int compute_average(hash_data* data, int temp) {
-//
-//}
-
-void enter_data_in_hash_map(hash_map* h, const char* weather_station_name, int temp) {
-    hash_data* data = hash_get_bucket(h, weather_station_name);
+static inline void enter_data_in_hash_map(hash_map* h, const char* weather_station_name, size_t str_len, int temp) {
+    hash_data* data = hash_get_bucket(h, weather_station_name, str_len);
     data->max = MAX(temp, data->max);
     data->min = MIN(temp, data->min);
     data->total += temp;
@@ -127,8 +139,6 @@ void enter_data_in_hash_map(hash_map* h, const char* weather_station_name, int t
 }
 
 void split_rest_slow(hash_map* h, const char* start, const char* end) {
-    // 101 because 100 is the max weather station name.
-    char BUFFER[101];
     const char* p = start;
     while (p < end) {
         while (*p != ';') {
@@ -136,15 +146,9 @@ void split_rest_slow(hash_map* h, const char* start, const char* end) {
         }
         
         size_t size = p - start;
-        strncpy(BUFFER, start, size);
-        BUFFER[size] = 0;
         ++p;
-        int num = parse_number(p);
-        enter_data_in_hash_map(h, BUFFER, num);
-        while (*p != '\n' && p < end) {
-            ++p;
-        }
-        ++p;
+        int num = parse_number_and_move_pointer(&p);
+        enter_data_in_hash_map(h, start, size, num);
         start = p;
     }
 }
@@ -153,27 +157,24 @@ const char* split_next(hash_map* h, const char* start) {
     const char* p = start;
     int index;
     while (1) {
-        index = index_of_newline(p);
+        index = index_of_semicolon(p);
         if (likely(index != -1))
             break;
-        // It should be impossible to overflow here. We ensure that the buffer is always a multiple of 16 bytes.
+        // It should be impossible to overflow here. We make sure that we can't get anywhere near the end of the buffer
+        // on the fast path. See calling function.
         p += 8;
     }
-    const char* pend = start + index + (p-start) + 1;
-    const char* index_of_semicolon = pend - 5; // Guaranteed always 4 chars in the numnber ("x.x\n")
-    while (*(index_of_semicolon) != ';') {
-        --index_of_semicolon;
-    }
-    int temp = parse_number(index_of_semicolon+1);
-    char BUFFER[101];
-    size_t size = index_of_semicolon-start;
-    strncpy(BUFFER, start, size);
-    BUFFER[size] = 0;
-#ifdef DEBUG
+    const char* psemi = p + index;
+    p = psemi + 1;
+    int temp = parse_number_and_move_pointer(&p);
+    size_t size = psemi - start;
+// For debugging
+//    char BUFFER[101];
+//    strncpy(BUFFER, start, size);
+//    BUFFER[size] = 0;
 //    printf("%s : %d\n", BUFFER, temp);
-#endif
-    enter_data_in_hash_map(h, BUFFER, temp);
-    return pend;
+    enter_data_in_hash_map(h, start, size, temp);
+    return p;
 }
 
 void parse_mapped_file_to_hash_map(const void* mapped_file, size_t mapped_size, hash_map* h) {
@@ -190,15 +191,23 @@ void parse_mapped_file_to_hash_map(const void* mapped_file, size_t mapped_size, 
     // within max_size_of_entry bytes of the end of the buffer. This is because as long as we're
     // at least max_size_of_entry bytes away from the end we know we'll find a newline and not
     // overrun. We then handle the leftover buffer with a slow path.
-    size_t max_size_of_entry = (mapped_size - (100 + 1 + 4 + 1));
-    const char* maxp = mapped_file + max_size_of_entry;
+    size_t max_size_of_entry = 100 + 1 + 4 + 1;
+    size_t max_distance_fast_path = mapped_size - max_size_of_entry;
+    
+    // This might be faster as it might allow some unrolling (don't think it is after
+    // experimenting)
+    size_t min_loops = mapped_size / max_size_of_entry;
+    for (size_t i = 0; i < min_loops; ++i) {
+        p = split_next(h, p);
+    }
+    
+    // Have to check the pointer from now on.
+    const char* maxp = mapped_file + max_distance_fast_path;
     while (p < maxp) {
         p = split_next(h, p);
     }
     
     split_rest_slow(h, p, ((char*)mapped_file) + mapped_size);
-    // Print p to stop everything getting optimized away
-    printf("IGNORE THIS LINE - IT PREVENTS OPTIMIZATION %p\n", p);
 }
 
 static inline char* find_split_point(char* point) {
@@ -233,6 +242,7 @@ typedef struct thread_info {
     thread_data data;
 } thread_info;
 
+// TODO: Try a single threaded implementation again.
 inline void spin_up_threads(int num_threads, char** splitpoints) {
     int result;
     thread_info* threads = (thread_info*)calloc(num_threads, sizeof(thread_info));
