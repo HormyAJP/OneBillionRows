@@ -58,11 +58,6 @@
 #define FULL "/Users/badger/dev/git/python-1-billion-row-challenge/data/measurements.txt"
 
 int main(int argc, const char * argv[]) {
-
-//    test_atoi();
-//    exit(0);
-//    test_index_of_newline();
-//    exit(0);
     
     const char* filename = SMALL;
     if (argv[1] == 0) {
@@ -86,6 +81,8 @@ int main(int argc, const char * argv[]) {
         exit(EXIT_FAILURE);
     }
     
+    // I was considering forcing 16 byte alingment to make sure SIMD can't overflow.
+    // Might need to come back to this.
     size_t size = sb.st_size;//(sb.st_size / 16) * 16;
     void *map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (map == MAP_FAILED) {

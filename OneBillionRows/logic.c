@@ -149,7 +149,7 @@ void split_rest_slow(hash_map* h, const char* start, const char* end) {
     }
 }
 
-char* split_next(hash_map* h, const char* start) {
+const char* split_next(hash_map* h, const char* start) {
     const char* p = start;
     int index;
     while (1) {

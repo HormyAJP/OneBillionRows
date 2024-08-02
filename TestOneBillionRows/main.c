@@ -101,6 +101,12 @@ void test_long_strings(void) {
     TEST_CASE_END();
 }
 
+// Fix these tests
+//    test_atoi();
+//    exit(0);
+//    test_index_of_newline();
+//    exit(0);
+
 int main(int argc, const char * argv[]) {
     test_short_strings();
     test_long_strings();
