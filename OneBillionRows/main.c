@@ -92,7 +92,12 @@ int main(int argc, char * argv[]) {
     }
     close(fd);
 
-    spin_up_threads(num_threads, split_input(map, size, num_threads));
+    if (num_threads == 1) {
+        run_single_threaded(map, size);
+    } else {
+        spin_up_threads(num_threads, split_input(map, size, num_threads));
+    }
+    
 
     if (munmap(map, size) == -1) {
         perror("Error unmapping the file");

@@ -27,7 +27,7 @@ typedef struct thread_data {
     hash_map* h;
 } thread_data;
 
-#define MAX_CORES 32
+#define MAX_THREADS 32
 
 #if defined(__linux__)
 int physical_cores(void) {
@@ -78,24 +78,31 @@ int physical_cores(void) {
 
 // Crazy idea: Is it faster to do a lookup somehow here? Probably not
 static inline int parse_number_and_move_pointer(const char** pstart) {
-    int isminus = 0;
-    if (**pstart == '-') {
-        isminus = 1;
-        (*pstart)++;
-    }
-    
     int val = 0;
-    while ( **pstart != '.') {
-        val = val * 10 + (**pstart - '0');
+    if (**pstart == '-') {
         (*pstart)++;
+        while ( **pstart != '.') {
+            val = val * 10 - (**pstart - '0');
+            (*pstart)++;
+        }
+        
+        (*pstart)++;
+        val = val * 10 - (**pstart - '0');
+        
+    } else {
+        int val = 0;
+        while ( **pstart != '.') {
+            val = val * 10 + (**pstart - '0');
+            (*pstart)++;
+        }
+        
+        (*pstart)++;
+        val = val * 10 + (**pstart - '0');
     }
     
-    (*pstart)++;
-    val = val * 10 + (**pstart - '0');
-
     // Move past the last digit and the newline
     *pstart += 2;
-    return isminus ? -val : val;
+    return val;
 }
 
 static inline int index_of_semicolon(const char* p) {
@@ -157,16 +164,9 @@ const char* split_next(hash_map* h, const char* start) {
     }
     const char* psemi = p + index;
     p = psemi + 1;
-    int temp = parse_number_and_move_pointer(&p);
-    size_t size = psemi - start;
-// For debugging
-//    char BUFFER[101];
-//    strncpy(BUFFER, start, size);
-//    BUFFER[size] = 0;
-//    printf("%s : %d\n", BUFFER, temp);
     // TODO: Idea. Aggregate data in a separate thread. Push things to some sort of queue. Overhead might be too
     // big?
-    enter_data_in_hash_map(h, start, size, temp);
+    enter_data_in_hash_map(h, start, psemi - start, parse_number_and_move_pointer(&p));
     return p;
 }
 
@@ -214,12 +214,12 @@ static inline char* find_split_point(char* point) {
 // TODO: Might be a bug in this when num_cores=1
 // WARNING: Calling this multiple times will screw your return values.
 char** split_input(char* start, size_t size, int num_cores) {
-    if (num_cores > MAX_CORES) {
-        fprintf(stderr, "Too many threads. Max is %d", MAX_CORES);
+    if (num_cores > MAX_THREADS) {
+        fprintf(stderr, "Too many threads. Max is %d", MAX_THREADS);
         abort();
     }
     
-    static char* splitpoints[MAX_CORES+1];
+    static char* splitpoints[MAX_THREADS+1];
     splitpoints[0] = start;
     size_t split_size = size / num_cores;
     for (int i = 1; i < num_cores; ++i) {
@@ -257,7 +257,6 @@ inline void run_single_threaded(const char* start, size_t length) {
     printf("TOTAL ROWS: %u\n", total_rows);
 }
 
-
 inline void spin_up_threads(int num_threads, char** splitpoints) {
     int result;
     thread_info* threads = (thread_info*)calloc(num_threads, sizeof(thread_info));
@@ -290,8 +289,8 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
     printf("TOTAL ROWS: %u\n", total_rows);
 
     printf("All threads done\n");
-    // TODO: abort to get fast cleanup?
-//    abort();
+    // abort to get fast cleanup?
+    abort();
     free(threads);
 }
 

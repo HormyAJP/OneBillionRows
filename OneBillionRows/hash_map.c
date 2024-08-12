@@ -17,7 +17,7 @@
 
 // Anecdotally djb2 hash seems faster than the crap I randomly came up with (no surprise)
 // Need to debug the hashmap and see how many collisions we're getting.
-size_t hash(const char *weather_station_name, size_t str_len)
+size_t hash2(const char *weather_station_name, size_t str_len)
 {
     unsigned long hash = 5381;
     // TODO: Expriment to see if we can just hash off the first 3 letters
@@ -29,6 +29,20 @@ size_t hash(const char *weather_station_name, size_t str_len)
 
     return hash % HASH_SIZE;
 }
+
+// Anecdotally faster than djb2
+// TODO: Try Murmur?
+size_t hash(const char *weather_station_name, size_t str_len) {
+    unsigned long hash = 0;
+    const char* pend = weather_station_name + str_len;
+    
+    while (weather_station_name < pend) {
+        hash = *weather_station_name++ + (hash << 6) + (hash << 16) - hash;
+    }
+    
+    return hash % HASH_SIZE;
+}
+
 
 hash_map* hash_create(void) {
     hash_map* h = (hash_map*)malloc(sizeof(hash_map));
