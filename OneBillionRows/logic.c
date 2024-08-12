@@ -8,8 +8,6 @@
 #include "logic.h"
 #include "shared_definitions.h"
 
-#include <emmintrin.h>
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -116,23 +114,37 @@ static inline int index_of_semicolon(const char* p) {
     return __builtin_ctz(mask);
 }
 
-static inline int index_of_newline(const char* p) {
-    // TODO: Make static const. Don't think you can as you're filling a register.
-    __m128i new_lines = _mm_set_epi64x(0x0A0A0A0A0A0A0A0A, 0x0A0A0A0A0A0A0A0A);
-    __m128i bytes_to_check = _mm_set_epi64x(*((long long*)p + 1), *(long long*)p);
-    __m128i comparison_result = _mm_cmpeq_epi8(bytes_to_check, new_lines);
-    int mask = _mm_movemask_epi8(comparison_result);
-    if (unlikely(!mask)) {
-        return -1;
-    }
-    return __builtin_ctz(mask);
+static inline int atomic_max(atomic_int *ptr, int newval) {
+    int expected, desired;
+
+    do {
+        expected = atomic_load(ptr);
+        desired = (expected > newval) ? expected : newval;
+    } while (!atomic_compare_exchange_weak(ptr, &expected, desired));
+
+    return desired;
+}
+
+static inline int atomic_min(atomic_int *ptr, int newval) {
+    int expected, desired;
+
+    do {
+        expected = atomic_load(ptr);
+        desired = (expected < newval) ? expected : newval;
+    } while (!atomic_compare_exchange_weak(ptr, &expected, desired));
+
+    return desired;
 }
 
 static inline void enter_data_in_hash_map(hash_map* h, const char* weather_station_name, size_t str_len, int temp) {
-    hash_data* data = hash_get_bucket(h, weather_station_name, str_len);
+    hash_data* data = hash_get_bucket(h, weather_station_name, str_len, NULL);
+//    data->max = atomic_max(&data->max, temp);
     data->max = MYMAX(temp, data->max);
+//    data->min = atomic_min(&data->min, temp);
     data->min = MYMIN(temp, data->min);
+//    atomic_fetch_add(&data->total, temp);
     data->total += temp;
+//    atomic_fetch_add(&data->count, 1);
     data->count++;
 }
 
@@ -211,7 +223,6 @@ static inline char* find_split_point(char* point) {
     return point;
 }
 
-// TODO: Might be a bug in this when num_cores=1
 // WARNING: Calling this multiple times will screw your return values.
 char** split_input(char* start, size_t size, int num_cores) {
     if (num_cores > MAX_THREADS) {
@@ -282,8 +293,13 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
         }
     }
     
+    // TODO: One potential trick might be to use a single, multi-threaded hash. Use
+    // atomics where possible, but for min/max, store those values on a per thread basis.
+    // This might back final aggregation faster. Not sure how expensive this actually is in
+    // the grand scheme though. Probably looking in the wrong place for optimizations
     merge_hash_tables(threads, num_threads);
-    // TODO: Need to fix the dump to display data correctly.
+    // TODO: Need to fix the dump to display data correctly, i.e. as per the challenge requiements/
+    // Probably won't do that because it just doesn't matter.
     total_rows = hash_dump(threads[0].data.h);
     
     printf("TOTAL ROWS: %u\n", total_rows);
@@ -294,20 +310,3 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
     free(threads);
 }
 
-void test_index_of_newline(void) {
-    char BUFFER[17];
-    BUFFER[16] = 0;
-    for (int i = 0; i < 16; ++i) {
-        for (int j = 0; j < i; j++) {
-            BUFFER[j] = 'X';
-        }
-        BUFFER[i] = '\n';
-        for (int j = i+1; j < 16; j++) {
-            BUFFER[j] = 'X';
-        }
-        
-        int index = index_of_newline(BUFFER);
-        printf("Got %d when testing with newline at %d: '%s'\n", index, i, BUFFER);
-        assert(index == i);
-    }
-}

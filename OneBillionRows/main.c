@@ -44,7 +44,7 @@ int main(int argc, char * argv[]) {
 
     int opt;
     char *optstring = "t:";
-    int num_threads = CORES;
+    int num_threads = physical_cores();
     
     while ((opt = getopt(argc, argv, optstring)) != -1) {
         switch (opt) {

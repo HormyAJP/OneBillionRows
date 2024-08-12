@@ -101,6 +101,24 @@ void test_long_strings(void) {
     TEST_CASE_END();
 }
 
+void test_index_of_newline(void) {
+    char BUFFER[17];
+    BUFFER[16] = 0;
+    for (int i = 0; i < 16; ++i) {
+        for (int j = 0; j < i; j++) {
+            BUFFER[j] = 'X';
+        }
+        BUFFER[i] = '\n';
+        for (int j = i+1; j < 16; j++) {
+            BUFFER[j] = 'X';
+        }
+        
+        int index = index_of_newline(BUFFER);
+        assert(index == i);
+    }
+}
+
+
 //char** split_input(char* start, size_t size, int num_cores) {
 void test_split_input(void) {
     const char* input = "Something\nElse";
