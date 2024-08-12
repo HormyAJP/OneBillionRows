@@ -214,6 +214,11 @@ static inline char* find_split_point(char* point) {
 // TODO: Might be a bug in this when num_cores=1
 // WARNING: Calling this multiple times will screw your return values.
 char** split_input(char* start, size_t size, int num_cores) {
+    if (num_cores > MAX_CORES) {
+        fprintf(stderr, "Too many threads. Max is %d", MAX_CORES);
+        abort();
+    }
+    
     static char* splitpoints[MAX_CORES+1];
     splitpoints[0] = start;
     size_t split_size = size / num_cores;

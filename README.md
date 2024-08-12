@@ -1,6 +1,8 @@
 m6a.4xlarge
 64 gb storage
 
+Use the script in dev/git/python-1-billion-row-challenge/data to generate
+
 The current machine does not support all of the following CPU features that are required by the
 image: [CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE, SSE2, SSE3, SSSE3, SSE4A, SSE4_1,
 SSE4_2, POPCNT, LZCNT, TSC, TSCINV_BIT, AVX, AVX2, AES, CLMUL, BMI1, BMI2, ADX, SHA, FMA,
@@ -30,3 +32,8 @@ AMD EPYC™ Genoa 9454P
 // Medium:
 //      One thread: 4.27s user 0.35s system 99% cpu 4.651 total
 //      Num Cores threads: 5.77s user 0.32s system 386% cpu 1.576 total
+
+
+data/measurements_100m.txt  4.15s user 0.38s system 376% cpu 1.205 total
+-t1 data/measurements_300m.txt  11.69s user 1.50s system 98% cpu 13.397 total
+data/measurements_300m.txt  12.43s user 1.15s system 382% cpu 3.551 total
