@@ -76,36 +76,26 @@ int physical_cores(void) {
 }
 #endif
 
-// Crazy idea: Is it faster to do a lookup on this? Probably not
-static inline int fast_atoi( const char * str )
-{
-    int isminus = 0;
-    if (unlikely(*str == '-')) {
-        isminus=1;
-        str++;
-    }
-    int val = 0;
-    while( *str ) {
-        val = val*10 + (*str++ - '0');
-    }
-    return isminus ? -val : val;
-}
-
+// Crazy idea: Is it faster to do a lookup somehow here? Probably not
 static inline int parse_number_and_move_pointer(const char** pstart) {
-    // TODO: Ditch the buffer and make fast_atoi not look for null
-    static char NUM_BUFFER[5];
-    int i = 0;
-    while (**pstart != '.') {
-        NUM_BUFFER[i++] = **pstart;
-        ++*pstart;
+    int isminus = 0;
+    if (**pstart == '-') {
+        isminus = 1;
+        (*pstart)++;
     }
-    // Move pointer past the dot
+    
+    int val = 0;
+    while ( **pstart != '.') {
+        val = val * 10 + (**pstart - '0');
+        (*pstart)++;
+    }
+    
     (*pstart)++;
-    NUM_BUFFER[i++] = **pstart;
-    NUM_BUFFER[i] = 0;
-    // Move pointer past the final digit AND the newline
+    val = val * 10 + (**pstart - '0');
+
+    // Move past the last digit and the newline
     *pstart += 2;
-    return fast_atoi(NUM_BUFFER);
+    return isminus ? -val : val;
 }
 
 static inline int index_of_semicolon(const char* p) {
@@ -316,14 +306,4 @@ void test_index_of_newline(void) {
         printf("Got %d when testing with newline at %d: '%s'\n", index, i, BUFFER);
         assert(index == i);
     }
-}
-
-void test_atoi(void) {
-    int k=0;
-    char BUFFER[16];
-    for (int i = 0; i < 100000000; ++i) {
-        sprintf(BUFFER, "%d", i);
-        k += fast_atoi(BUFFER);
-    }
-    printf("%d\n", k);
 }

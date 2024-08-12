@@ -28,25 +28,6 @@
 //rounding-direction "roundTowardPositive
 //
 
-
-// Target times against C reference
-//
-// cd ~/dev/git/1brc
-// time bin/analyze /Users/badger/dev/git/python-1-billion-row-challenge/data/measurements_medium.txt > /dev/null
-//
-// TODO: WTF. They aren't getting any sys or user times :think:
-// Full: 0.00s user 0.00s system 0% cpu 26.914 total
-// Medium: 0.00s user 0.00s system 1% cpu 0.667 total
-
-// I need to be just over twice as fast! That's actually not horrific.
-// Although, I tried the winnign java implementation on a decent AWS
-// instance and I'm about 4 times slower. So there's definitely work to be
-// done. 
-// My times:
-// Note that I'm not leverging multiple cores that well it seems
-// Full: 48.57s user 25.66s system 126% cpu 58.778 total
-// Medium: 5.77s user 0.41s system 381% cpu 1.620 total
-
 #include "logic.h"
 
 #include <stdio.h>
@@ -59,20 +40,33 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-#define SMALL "/Users/badger/dev/git/python-1-billion-row-challenge/data/measurements_small.txt"
-#define MEDIUM  "/Users/badger/dev/git/python-1-billion-row-challenge/data/measurements_medium.txt"
-#define FULL "/Users/badger/dev/git/python-1-billion-row-challenge/data/measurements.txt"
+int main(int argc, char * argv[]) {
 
-int main(int argc, const char * argv[]) {
+    int opt;
+    char *optstring = "t:";
+    int num_threads = CORES;
     
-    const char* filename = SMALL;
-    if (argv[1] == 0) {
-        fprintf(stderr, "WARNING: No input file specified. Using default small file:\n%s\n\nYou might want:\n\n%s\n%s", SMALL, MEDIUM, FULL);
-    } else {
-        filename = argv[1];
+    while ((opt = getopt(argc, argv, optstring)) != -1) {
+        switch (opt) {
+            case 't':
+                num_threads = atoi(optarg);
+                printf("Overriding number of threads to: %d\n", num_threads);
+                break;
+            case '?':
+                fprintf(stderr, "Usage: %s [-t num_threads]\n", argv[0]);
+                return 1;
+            default:
+                abort();
+        }
     }
     
-    const int num_cores = CORES;
+    if (optind != argc - 1) {
+        fprintf(stderr, "Expected input filename as non-optinal parameter\n");
+        exit(1);
+    }
+    
+    const char* filename = argv[optind];
+    printf("Using input file: %s\n", filename);
     
     int fd = open(filename, O_RDONLY);
     if (fd == -1) {
@@ -98,7 +92,7 @@ int main(int argc, const char * argv[]) {
     }
     close(fd);
 
-    spin_up_threads(num_cores, split_input(map, size, num_cores));
+    spin_up_threads(num_threads, split_input(map, size, num_threads));
 
     if (munmap(map, size) == -1) {
         perror("Error unmapping the file");
