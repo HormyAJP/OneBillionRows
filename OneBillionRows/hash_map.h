@@ -33,6 +33,8 @@ void hash_destroy(hash_map* h);
 // TODO: Debug collisions and collision depths
 hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name, size_t str_len);
 
-void hash_dump(hash_map* h);
+void hash_merge(hash_map* into, hash_map* from);
+
+unsigned int hash_dump(hash_map* h);
 
 #endif /* hash_map_h */

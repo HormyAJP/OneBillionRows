@@ -101,6 +101,34 @@ void test_long_strings(void) {
     TEST_CASE_END();
 }
 
+//char** split_input(char* start, size_t size, int num_cores) {
+void test_split_input(void) {
+    const char* input = "Something\nElse";
+    char** split = split_input(input, strlen(input), 1);
+    assert(split[0] == input);
+    assert(split[1] == input + strlen(input));
+
+    split = split_input(input, strlen(input), 2);
+    assert(split[0] == input);
+    assert(split[1] == input + strlen("Something\n"));
+    assert(split[2] == input + strlen(input));
+    
+    
+    input = "Kingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\nKingston;31.4\n";
+    
+    split = split_input(input, strlen(input), 1);
+    assert(split[0] == input);
+    assert(split[1] == input + strlen(input));
+    
+    split = split_input(input, strlen(input), 2);
+    assert(split[0] < split[1]);
+    assert(split[1] < split[2]);
+    assert(split[0] == input);
+    assert(split[2] == input + strlen(input));
+}
+
+char** split_input(char* start, size_t size, int num_cores);
+
 // Fix these tests
 //    test_atoi();
 //    exit(0);
@@ -110,5 +138,6 @@ void test_long_strings(void) {
 int main(int argc, const char * argv[]) {
     test_short_strings();
     test_long_strings();
+    test_split_input();
     return 0;
 }

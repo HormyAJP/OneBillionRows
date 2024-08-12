@@ -39,7 +39,10 @@
 // Medium: 0.00s user 0.00s system 1% cpu 0.667 total
 
 // I need to be just over twice as fast! That's actually not horrific.
-// My tmes:
+// Although, I tried the winnign java implementation on a decent AWS
+// instance and I'm about 4 times slower. So there's definitely work to be
+// done. 
+// My times:
 // Note that I'm not leverging multiple cores that well it seems
 // Full: 48.57s user 25.66s system 126% cpu 58.778 total
 // Medium: 5.77s user 0.41s system 381% cpu 1.620 total

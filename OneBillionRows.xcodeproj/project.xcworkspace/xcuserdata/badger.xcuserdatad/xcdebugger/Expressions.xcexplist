@@ -3,12 +3,29 @@
    version = "1.0">
    <ContextStates>
       <ContextState
+         contextName = "hash_dump:hash_map.c">
+         <PersistentStrings>
+            <PersistentString
+               value = "h-&gt;buckets[i]">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
          contextName = "main:main.c">
          <PersistentStrings>
             <PersistentString
                value = "d">
             </PersistentString>
          </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "split_input:logic.c">
+      </ContextState>
+      <ContextState
+         contextName = "test_split_input:main.c">
+      </ContextState>
+      <ContextState
+         contextName = "spin_up_threads:logic.c">
       </ContextState>
    </ContextStates>
 </VariablesViewState>

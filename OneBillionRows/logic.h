@@ -21,6 +21,7 @@
 extern const char* FILE_NAME;
 
 int physical_cores(void);
+void run_single_threaded(const char* start, size_t length);
 void spin_up_threads(int num_threads, char** splitpoints);
 void parse_mapped_file_to_hash_map(const void* mapped_file, size_t mapped_size, hash_map* h);
 void spin_up_threads(int num_threads, char** splitpoints);

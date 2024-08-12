@@ -27,7 +27,7 @@ typedef struct thread_data {
     hash_map* h;
 } thread_data;
 
-static const size_t MAX_CORES = 32;
+#define MAX_CORES 32
 
 #if defined(__linux__)
 int physical_cores(void) {
@@ -76,6 +76,7 @@ int physical_cores(void) {
 }
 #endif
 
+// Crazy idea: Is it faster to do a lookup on this? Probably not
 static inline int fast_atoi( const char * str )
 {
     int isminus = 0;
@@ -91,6 +92,7 @@ static inline int fast_atoi( const char * str )
 }
 
 static inline int parse_number_and_move_pointer(const char** pstart) {
+    // TODO: Ditch the buffer and make fast_atoi not look for null
     static char NUM_BUFFER[5];
     int i = 0;
     while (**pstart != '.') {
@@ -102,12 +104,11 @@ static inline int parse_number_and_move_pointer(const char** pstart) {
     NUM_BUFFER[i++] = **pstart;
     NUM_BUFFER[i] = 0;
     // Move pointer past the final digit AND the newline
-    *pstart+=2;
+    *pstart += 2;
     return fast_atoi(NUM_BUFFER);
 }
 
 static inline int index_of_semicolon(const char* p) {
-    // TODO: Make static const. Don't think you can as you're filling a register.
     __m128i new_lines = _mm_set_epi64x(0x3B3B3B3B3B3B3B3B, 0x3B3B3B3B3B3B3B3B);
     __m128i bytes_to_check = _mm_set_epi64x(*((long long*)p + 1), *(long long*)p);
     __m128i comparison_result = _mm_cmpeq_epi8(bytes_to_check, new_lines);
@@ -132,8 +133,8 @@ static inline int index_of_newline(const char* p) {
 
 static inline void enter_data_in_hash_map(hash_map* h, const char* weather_station_name, size_t str_len, int temp) {
     hash_data* data = hash_get_bucket(h, weather_station_name, str_len);
-    data->max = MAX(temp, data->max);
-    data->min = MIN(temp, data->min);
+    data->max = MYMAX(temp, data->max);
+    data->min = MYMIN(temp, data->min);
     data->total += temp;
     data->count++;
 }
@@ -173,6 +174,8 @@ const char* split_next(hash_map* h, const char* start) {
 //    strncpy(BUFFER, start, size);
 //    BUFFER[size] = 0;
 //    printf("%s : %d\n", BUFFER, temp);
+    // TODO: Idea. Aggregate data in a separate thread. Push things to some sort of queue. Overhead might be too
+    // big?
     enter_data_in_hash_map(h, start, size, temp);
     return p;
 }
@@ -218,6 +221,8 @@ static inline char* find_split_point(char* point) {
     return point;
 }
 
+// TODO: Might be a bug in this when num_cores=1
+// WARNING: Calling this multiple times will screw your return values.
 char** split_input(char* start, size_t size, int num_cores) {
     static char* splitpoints[MAX_CORES+1];
     splitpoints[0] = start;
@@ -234,6 +239,7 @@ void* thread_function(void* arg) {
     printf("Thread started with data: %p, %zd\n", data->start, data->length);
     
     parse_mapped_file_to_hash_map(data->start, data->length, data->h);
+    printf("Thread exiting with data: %p, %zd\n", data->start, data->length);
     pthread_exit(NULL);
 }
 
@@ -242,7 +248,21 @@ typedef struct thread_info {
     thread_data data;
 } thread_info;
 
-// TODO: Try a single threaded implementation again.
+void merge_hash_tables(thread_info* info, int num_threads) {
+    hash_map* haggregate = info[0].data.h;
+    for (int i = 1; i < num_threads; ++i) {
+        hash_merge(haggregate, info[i].data.h);
+    }
+}
+
+inline void run_single_threaded(const char* start, size_t length) {
+    hash_map* h = hash_create();
+    parse_mapped_file_to_hash_map(start, length, h);
+    unsigned int total_rows = hash_dump(h);
+    printf("TOTAL ROWS: %u\n", total_rows);
+}
+
+
 inline void spin_up_threads(int num_threads, char** splitpoints) {
     int result;
     thread_info* threads = (thread_info*)calloc(num_threads, sizeof(thread_info));
@@ -257,6 +277,8 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
             exit(1);
         }
     }
+    
+    unsigned int total_rows = 0;
     // TODO: This seems to add several seconds of overhead and I'm not even merging yet :(
     for (int i = 0; i < num_threads; ++i) {
         result = pthread_join(threads[i].thread, NULL);
@@ -264,11 +286,13 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
             perror("Failed to join thread");
             exit(1);
         }
-        printf("================================================================================\n");
-        hash_dump(threads[i].data.h);
     }
     
-
+    merge_hash_tables(threads, num_threads);
+    // TODO: Need to fix the dump to display data correctly.
+    total_rows = hash_dump(threads[0].data.h);
+    
+    printf("TOTAL ROWS: %u\n", total_rows);
 
     printf("All threads done\n");
     // TODO: abort to get fast cleanup?
