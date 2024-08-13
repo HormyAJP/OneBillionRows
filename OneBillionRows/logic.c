@@ -76,31 +76,47 @@ int physical_cores(void) {
 
 // Crazy idea: Is it faster to do a lookup somehow here? Probably not
 static inline int parse_number_and_move_pointer(const char** pstart) {
-    int val = 0;
-    if (**pstart == '-') {
-        (*pstart)++;
-        while ( **pstart != '.') {
-            val = val * 10 - (**pstart - '0');
-            (*pstart)++;
-        }
-        
-        (*pstart)++;
-        val = val * 10 - (**pstart - '0');
-        
-    } else {
-        int val = 0;
-        while ( **pstart != '.') {
-            val = val * 10 + (**pstart - '0');
-            (*pstart)++;
-        }
-        
-        (*pstart)++;
-        val = val * 10 + (**pstart - '0');
-    }
+    int val;
+//    if (**pstart == '-') {
+//        (*pstart)++;
+//        while ( **pstart != '.') {
+//            val = val * 10 - (**pstart - '0');
+//            (*pstart)++;
+//        }
+//        
+//        (*pstart)++;
+//        val = val * 10 - (**pstart - '0');
+//        
+//    } else {
+//        int val = 0;
+//        while ( **pstart != '.') {
+//            val = val * 10 + (**pstart - '0');
+//            (*pstart)++;
+//        }
+//        
+//        (*pstart)++;
+//        val = val * 10 + (**pstart - '0');
+//    }
+//    
+//    // Move past the last digit and the newline
+//    *pstart += 2;
+//    return val;
     
-    // Move past the last digit and the newline
-    *pstart += 2;
-    return val;
+    int sign = 1;
+    if (**pstart == '-') {
+        sign = -1;
+        (*pstart)++;
+    }
+
+    if ((*pstart)[1] == '.') {
+        val = (((*pstart)[0] * 10) + (*pstart)[2] - ('0' * 11)) * sign;
+        *pstart += 4;
+        return val;
+    } else {
+        val = ((*pstart)[0] * 100 + (*pstart)[1] * 10 + (*pstart)[3] - ('0' * 111)) * sign;
+        *pstart += 5;
+        return val;
+    }
 }
 
 static inline int index_of_semicolon(const char* p) {
