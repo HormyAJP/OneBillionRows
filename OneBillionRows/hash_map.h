@@ -12,7 +12,8 @@
 #include <stdatomic.h>
 #include <pthread.h>
 
-#define HASH_SIZE 10000
+#define HASH_SIZE 16384 // 2^14
+#define HASH_MOD (HASH_SIZE - 1)
 #define MAX_STATION_NAME_LENGTH 100
 
 #define HASH_MAP_DEBUGGING 0

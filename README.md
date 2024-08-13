@@ -37,3 +37,7 @@ AMD EPYC™ Genoa 9454P
 data/measurements_100m.txt  4.15s user 0.38s system 376% cpu 1.205 total
 -t1 data/measurements_300m.txt  11.69s user 1.50s system 98% cpu 13.397 total
 data/measurements_300m.txt  12.43s user 1.15s system 382% cpu 3.551 total
+
+THIS IS MY BEST
+data/measurements_full.txt  37.45s user 23.33s system 118% cpu 51.479 total
+-t8 data/measurements_full.txt  39.98s user 19.43s system 207% cpu 28.595 total

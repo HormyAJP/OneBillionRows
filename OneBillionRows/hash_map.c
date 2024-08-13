@@ -12,9 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define HASH_SIZE 10000
-#define MAX_STATION_NAME_LENGTH 100
-
 // Anecdotally djb2 hash seems faster than the crap I randomly came up with (no surprise)
 // Need to debug the hashmap and see how many collisions we're getting.
 size_t hash2(const char *weather_station_name, size_t str_len)
@@ -25,7 +22,7 @@ size_t hash2(const char *weather_station_name, size_t str_len)
         hash = ((hash << 5) + hash) + *weather_station_name++; /* hash * 33 + c */
     }
 
-    return hash % HASH_SIZE;
+    return hash & HASH_MOD;
 }
 
 // Anecdotally faster than djb2
@@ -42,7 +39,7 @@ size_t hash(const char *weather_station_name, size_t str_len) {
         hash = *weather_station_name++ + (hash << 6) + (hash << 16) - hash;
     }
     
-    return hash % HASH_SIZE;
+    return hash & HASH_MOD;
 }
 
 
