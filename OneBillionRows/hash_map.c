@@ -64,13 +64,13 @@ hash_data* hash_get_bucket_thread_safe(hash_map* h, const char* weather_station_
     
     // In the locked version, we have to start the search again because another thread might have created the
     // bucket whilst we were busy.
-    // There should otherwise be no race condition. The danger area is when performing strncmp in the unsafe
-    // hash_get_bucket function. However, there's no way for the strncmp to return 0 untill every character of
+    // There should otherwise be no race condition. The danger area is when performing memcmp in the unsafe
+    // hash_get_bucket function. However, there's no way for the memcmp to return 0 untill every character of
     // the bucket name has been copied using strncpy below. And once that happens, the bucket is good to go.
     size_t bucket = hash(weather_station_name, str_len);
     hash_data* data = &(h->buckets[bucket]);
     while (1) {
-        if (likely(!strncmp(data->weather_station_name, weather_station_name, str_len))) {
+        if (likely(!memcmp(data->weather_station_name, weather_station_name, str_len))) {
             break;
         }
 
@@ -94,7 +94,7 @@ hash_data* hash_get_bucket(hash_map* h, const char* weather_station_name, size_t
     size_t bucket = hash(weather_station_name, str_len);
     hash_data* data = &(h->buckets[bucket]);
     while (1) {
-        if (likely(!strncmp(data->weather_station_name, weather_station_name, str_len))) {
+        if (likely(!memcmp(data->weather_station_name, weather_station_name, str_len))) {
             break;
         }
 

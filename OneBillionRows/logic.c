@@ -322,7 +322,7 @@ inline void spin_up_threads(int num_threads, char** splitpoints) {
 
     printf("All threads done\n");
     // abort to get fast cleanup?
-    abort();
+//    abort();
     free(threads);
 }
 

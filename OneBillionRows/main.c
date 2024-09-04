@@ -40,6 +40,8 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
+#define BUFSIZE ((1<<10)*16)
+
 int main(int argc, char * argv[]) {
 
     int opt;
@@ -64,6 +66,32 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "Expected input filename as non-optinal parameter\n");
         exit(1);
     }
+    
+    // N.B. I just cribbed the piping code from other repos. On my machine this doesn't
+    // really make much of a difference. It might if I were running on high end hardware
+    // (as in the original challenge)
+    int pipefd[2];
+    if (pipe(pipefd) != 0) {
+      perror("pipe error");
+      exit(EXIT_FAILURE);
+    }
+    
+    pid_t pid;
+    pid = fork();
+    if (pid > 0) {
+      // close write pipe
+      close(pipefd[1]);
+      char buf[BUFSIZE];
+      if (-1 == read(pipefd[0], &buf, BUFSIZE)) {
+        perror("read error");
+      }
+      printf("%s", buf);
+      close(pipefd[0]);
+      exit(EXIT_FAILURE);
+    }
+
+    // close unused read pipe
+    close(pipefd[0]);
     
     const char* filename = argv[optind];
     printf("Using input file: %s\n", filename);
@@ -90,7 +118,7 @@ int main(int argc, char * argv[]) {
         close(fd);
         exit(EXIT_FAILURE);
     }
-    close(fd);
+//    close(fd);
 
     if (num_threads == 1) {
         run_single_threaded(map, size);
@@ -98,9 +126,19 @@ int main(int argc, char * argv[]) {
         spin_up_threads(num_threads, split_input(map, size, num_threads));
     }
     
+    // prepare output string
+//    char buf[(1 << 10) * 16];
+//    result_to_str(buf, result);
+//    if (-1 == write(pipefd[1], buf, strlen(buf))) {
+//      perror("write error");
+//    }
 
+    // close write pipe
+    close(pipefd[1]);
+    
     if (munmap(map, size) == -1) {
         perror("Error unmapping the file");
     }
+    close(fd);
     return 0;
 }
